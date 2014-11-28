@@ -8,3 +8,4 @@ sudo -u tribe hg clone https://bitbucket.org/greenelab/tribe
 cd ~
 sudo rm /etc/nginx/sites-enabled/default
 sudo ln -s ~/tribe-ec2-deploy/configs/tribe_nginx.conf /etc/nginx/sites-enabled/
+sudo /etc/init.d/nginx restart
