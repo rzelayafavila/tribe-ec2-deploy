@@ -37,7 +37,7 @@ Unattended-Upgrade::Package-Blacklist {
 
 #get python and mercurial installed
 sudo apt-get update
-sudo apt-get -y -q install mercurial build-essential python python-dev python-distribute python-pip nginx supervisor postgresql-common libqp-dev npm
+sudo apt-get -y -q install node mercurial build-essential python python-dev python-distribute python-pip nginx supervisor postgresql-common libqp-dev npm
 
 sudo pip install uwsgi
 sudo adduser tribe www-data --disabled-login --system
@@ -49,6 +49,11 @@ sudo -u tribe hg clone ssh+hg://hg@bitbucket.org/greenelab/tribe
 
 #need to add ssh deploy key for cgreene/go before this
 sudo pip install -r  /home/tribe/tribe/requirements.txt
+
+#start to get the npm stuff in place
+sudo npm -g install grunt-cli karma bower
+
+
 
 cd ~
 sudo rm /etc/nginx/sites-enabled/default
