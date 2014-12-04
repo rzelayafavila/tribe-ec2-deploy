@@ -14,7 +14,6 @@ Unattended-Upgrade::Allowed-Origins {
 
 // List of packages to not update
 Unattended-Upgrade::Package-Blacklist {
-//  "vim";
 //  "libc6";
 //  "libc6-dev";
 //  "libc6-i686";
@@ -34,11 +33,31 @@ Unattended-Upgrade::Package-Blacklist {
 // the file /var/run/reboot-required is found after the upgrade 
 //Unattended-Upgrade::Automatic-Reboot "false";' | sudo tee /etc/apt/apt.conf.d/50unattended-upgrades
 
+#install elasticsearch repository
+wget -qO - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | sudo apt-key add -
+echo 'deb http://packages.elasticsearch.org/elasticsearch/1.4/debian stable main
+' | sudo tee -a /etc/apt/sources.list
 
 #get python and mercurial installed
 sudo apt-get update
-sudo apt-get -y -q install node mercurial build-essential python python-dev python-distribute python-pip nginx supervisor postgresql-common libqp-dev npm
+sudo apt-get -y -q install nodejs-legacy mercurial build-essential python python-dev python-distribute python-pip nginx supervisor postgresql-common libpq-dev postgresql-client npm elasticsearch openjdk-7-jre
 
+#have elasticsearch only look locally
+echo 'network.bind_host: 127.0.0.1
+script.disable_dynamic: true
+bootstrap.mlockall: true
+path.data: /elastic
+path.logs: /var/log/elasticsearch
+cluster.name: tribesearch
+' | sudo tee -a /etc/elasticsearch/elasticsearch.yml
+
+#elastic search likes this http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#vm-max-map-count
+sudo sysctl -w vm.max_map_count=262144
+#set heap size for elastic http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#_environment_variables
+echo 'ES_HEAP_SIZE=512m' | sudo tee -a /etc/environment
+sudo pip install pyelasticsearch
+
+#install uwsgi, get config files
 sudo pip install uwsgi
 sudo adduser tribe www-data --disabled-login --system
 hg clone https://cgreene@bitbucket.org/greenelab/tribe-ec2-deploy
@@ -52,7 +71,14 @@ sudo pip install -r  /home/tribe/tribe/requirements.txt
 
 #start to get the npm stuff in place
 sudo npm -g install grunt-cli karma bower
+cd /home/tribe/tribe/interface
+sudo -u tribe npm install
+sudo -u tribe bower install
+sudo -u tribe grunt --compile
 
+#point to interface/bin
+cd /home/tribe/tribe/
+sudo -u tribe ln -s ../interface/bin static
 
 
 cd ~
@@ -60,4 +86,8 @@ sudo rm /etc/nginx/sites-enabled/default
 sudo ln -s ~/tribe-ec2-deploy/configs/tribe_nginx.conf /etc/nginx/sites-enabled/
 sudo mkdir /var/log/uwsgi
 sudo chown tribe:www-data /var/log/uwsgi/
+sudo -u tribe uwsgi --ini /home/ubuntu/tribe-ec2-deploy/configs/uwsgi.ini
 sudo /etc/init.d/nginx restart
+sudo /etc/init.d/elasticsearch restart
+
+sudo -u tribe /home/tribe/manage.py rebuild_index 
