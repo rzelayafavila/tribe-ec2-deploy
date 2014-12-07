@@ -31,7 +31,7 @@ Unattended-Upgrade::Package-Blacklist {
 
 // Automatically reboot *WITHOUT CONFIRMATION* if a 
 // the file /var/run/reboot-required is found after the upgrade 
-//Unattended-Upgrade::Automatic-Reboot "false";' | sudo tee /etc/apt/apt.conf.d/50unattended-upgrades
+Unattended-Upgrade::Automatic-Reboot "true";' | sudo tee /etc/apt/apt.conf.d/50unattended-upgrades
 
 #install elasticsearch repository
 wget -qO - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | sudo apt-key add -
@@ -40,7 +40,7 @@ echo 'deb http://packages.elasticsearch.org/elasticsearch/1.4/debian stable main
 
 #get python and mercurial installed
 sudo apt-get update
-sudo apt-get -y -q install nodejs-legacy mercurial build-essential python python-dev python-distribute python-pip nginx supervisor postgresql-common libpq-dev postgresql-client npm elasticsearch openjdk-7-jre
+sudo apt-get -y -q install nodejs-legacy mercurial build-essential python python-dev python-distribute python-pip nginx supervisor postgresql-common libpq-dev postgresql-client npm elasticsearch openjdk-7-jre rabbitmq-server supervisor
 
 #have elasticsearch only look locally
 echo 'network.bind_host: 127.0.0.1
@@ -56,6 +56,38 @@ sudo sysctl -w vm.max_map_count=262144
 #set heap size for elastic http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#_environment_variables
 echo 'ES_HEAP_SIZE=512m' | sudo tee -a /etc/environment
 sudo pip install pyelasticsearch
+
+#make the rabbitmq user
+sudo rabbitmqctl add_user tribe 4HU7c36GygdVqCIOLCBH
+#make the vhost for tribe
+sudo rabbitmqctl add_vhost tribe
+#give the tribe user access to the tribe vhost
+sudo rabbitmqctl set_permissions -p tribe tribe ".*" ".*" ".*"
+
+#run celery through supervisor
+echo '[program:tribe-celery]
+command=celery -A tribe worker -c 3 --loglevel=INFO
+directory=/home/tribe/tribe
+user=nobody
+numprocs=1
+autostart=true
+autorestart=true
+startsecs=10
+
+; Need to wait for currently executing tasks to finish at shutdown.
+; Increase this if you have very long running tasks.
+stopwaitsecs = 600
+
+; When resorting to send SIGKILL to the program to terminate it
+; send SIGKILL to its whole process group instead,
+; taking care of its children as well.
+killasgroup=true
+
+; if rabbitmq is supervised, set its priority higher
+; so it starts first
+priority=998' | sudo tee /etc/supervisor/conf.d/tribe-celery.conf
+sudo supervisorctl reread
+
 
 #install uwsgi, get config files
 sudo pip install uwsgi
