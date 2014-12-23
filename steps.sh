@@ -51,10 +51,17 @@ path.logs: /var/log/elasticsearch
 cluster.name: tribesearch
 ' | sudo tee -a /etc/elasticsearch/elasticsearch.yml
 
+#add the elastic search partition to the fstab
+echo '/dev/xvdf	/elastic	 ext4	defaults,nofail,nobootwait	0 2
+' | sudo tee -a /etc/fstab
+
+
 #elastic search likes this http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#vm-max-map-count
 sudo sysctl -w vm.max_map_count=262144
 #set heap size for elastic http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#_environment_variables
 echo 'ES_HEAP_SIZE=512m' | sudo tee -a /etc/environment
+#make elasticsearch start on boot
+sudo update-rc.d elasticsearch defaults 95 10
 sudo pip install pyelasticsearch
 
 #make the rabbitmq user
