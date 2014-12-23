@@ -119,14 +119,16 @@ sudo ln -s ~/tribe-ec2-deploy/configs/tribe_nginx.conf /etc/nginx/sites-enabled/
 
 #setup uwsgi
 sudo mkdir /var/log/uwsgi
-sudo chown tribe:www-data /var/log/uwsgi/
+sudo chown -R www-data:www-data /var/log/uwsgi/
 sudo mkdir /etc/uwsgi
 sudo mkdir /etc/uwsgi/vassals
 sudo ln -s /home/ubuntu/tribe-ec2-deploy/configs/tribe_uwsgi.ini /etc/uwsgi/vassals/
 sudo ln -s /home/ubuntu/tribe-ec2-deploy/configs/uwsgi.conf /etc/init/
 
 #restart required services
+sudo service uwsgi restart
 sudo /etc/init.d/nginx restart
 sudo /etc/init.d/elasticsearch restart
 
+#rebuild search index if needed
 sudo -u tribe /home/tribe/manage.py rebuild_index 
