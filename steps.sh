@@ -113,7 +113,7 @@ sudo npm -g install grunt-cli karma bower
 cd /home/tribe/tribe/interface
 sudo -u tribe npm install
 sudo -u tribe bower install
-sudo -u tribe grunt --compile
+sudo -u tribe grunt --force
 
 #point to interface/bin
 cd /home/tribe/tribe/
