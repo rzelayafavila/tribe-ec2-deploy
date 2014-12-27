@@ -40,7 +40,7 @@ echo 'deb http://packages.elasticsearch.org/elasticsearch/1.4/debian stable main
 
 #get python and mercurial installed
 sudo apt-get update
-sudo apt-get -y -q install nodejs-legacy mercurial build-essential python python-dev python-distribute python-pip nginx supervisor postgresql-common libpq-dev postgresql-client npm elasticsearch openjdk-7-jre rabbitmq-server supervisor
+sudo apt-get -y -q install nodejs-legacy mercurial build-essential python python-dev python-distribute python-pip nginx postgresql-common libpq-dev postgresql-client npm elasticsearch openjdk-7-jre
 
 #have elasticsearch only look locally
 echo 'network.bind_host: 127.0.0.1
@@ -63,37 +63,6 @@ echo 'ES_HEAP_SIZE=512m' | sudo tee -a /etc/environment
 #make elasticsearch start on boot
 sudo update-rc.d elasticsearch defaults 95 10
 sudo pip install pyelasticsearch
-
-#make the rabbitmq user
-sudo rabbitmqctl add_user tribe 4HU7c36GygdVqCIOLCBH
-#make the vhost for tribe
-sudo rabbitmqctl add_vhost tribe
-#give the tribe user access to the tribe vhost
-sudo rabbitmqctl set_permissions -p tribe tribe ".*" ".*" ".*"
-
-#run celery through supervisor
-echo '[program:tribe-celery]
-command=celery -A tribe worker -c 3 --loglevel=INFO
-directory=/home/tribe/tribe
-user=nobody
-numprocs=1
-autostart=true
-autorestart=true
-startsecs=10
-
-; Need to wait for currently executing tasks to finish at shutdown.
-; Increase this if you have very long running tasks.
-stopwaitsecs = 600
-
-; When resorting to send SIGKILL to the program to terminate it
-; send SIGKILL to its whole process group instead,
-; taking care of its children as well.
-killasgroup=true
-
-; if rabbitmq is supervised, set its priority higher
-; so it starts first
-priority=998' | sudo tee /etc/supervisor/conf.d/tribe-celery.conf
-sudo supervisorctl reread
 
 
 #install uwsgi, get config files
@@ -138,4 +107,4 @@ sudo /etc/init.d/nginx restart
 sudo /etc/init.d/elasticsearch restart
 
 #rebuild search index if needed
-sudo -u tribe /home/tribe/manage.py rebuild_index 
+sudo -u tribe /home/tribe/tribe/manage.py rebuild_index 
