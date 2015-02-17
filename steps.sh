@@ -1,110 +1,34 @@
-#setup unattended updates
+# setup unattended updates
+fab -H <aws-dns> -u ubuntu -i <key.pem> enable_unattended_updates
 
-echo 'APT::Periodic::Update-Package-Lists "1";
-APT::Periodic::Unattended-Upgrade "1";' | sudo tee /etc/apt/apt.conf.d/20auto-upgrades
+# install packages
+fab -H <aws-dns> -u ubuntu -i <key.pem> install_system_packages
 
-echo '// Automatically upgrade packages from these (origin, archive) pairs
-Unattended-Upgrade::Allowed-Origins {    
-    // ${distro_id} and ${distro_codename} will be automatically expanded
-    "${distro_id} stable";
-    "${distro_id} ${distro_codename}-security";
-    "${distro_id} ${distro_codename}-updates";
-//  "${distro_id} ${distro_codename}-proposed-updates";
-};
+# configure elasticsearch
+fab -H <aws-dns> -u ubuntu -i <key.pem> setup_elasticsearch
 
-// List of packages to not update
-Unattended-Upgrade::Package-Blacklist {
-//  "libc6";
-//  "libc6-dev";
-//  "libc6-i686";
-};
+# create the tribe user; make sure authorized_keys has been created by this point.
+fab -H <aws-dns> -u ubuntu -i <key.pem> create_tribe_user
 
-// Send email to this address for problems or packages upgrades
-// If empty or unset then no email is sent, make sure that you 
-// have a working mail setup on your system. The package 'mailx'
-// must be installed or anything that provides /usr/bin/mail.
-//Unattended-Upgrade::Mail "root@localhost";
+# create the deployment key and retrieve it -- be prepared to enter a password for your ssh key
+# also let it save to the default location -- we count on that for the download.
+fab -H <aws-dns> -u ubuntu -i <key.pem> create_deploy_keys
 
-// Do automatic removal of new unused dependencies after the upgrade
-// (equivalent to apt-get autoremove)
-//Unattended-Upgrade::Remove-Unused-Dependencies "false";
+# you need to have put the tribe deployment key on the bitbucket repo before this step.
+fab -H <aws-dns> -u ubuntu -i <key.pem> clone_tribe_repo
 
-// Automatically reboot *WITHOUT CONFIRMATION* if a 
-// the file /var/run/reboot-required is found after the upgrade 
-Unattended-Upgrade::Automatic-Reboot "true";' | sudo tee /etc/apt/apt.conf.d/50unattended-upgrades
+# you need to have setup the configuration (e.g. correct domain name, etc) for the
+# tribe-nginx.conf file before running this step.
+fab -H <aws-dns> -u ubuntu -i <key.pem> setup_nginx
 
-#install elasticsearch repository
-wget -qO - http://packages.elasticsearch.org/GPG-KEY-elasticsearch | sudo apt-key add -
-echo 'deb http://packages.elasticsearch.org/elasticsearch/1.4/debian stable main
-' | sudo tee -a /etc/apt/sources.list
+# create the virtualenv that tribe uses
+fab -H <aws-dns> -u ubuntu -i <key.pem> setup_virtualenv
 
-#get python and mercurial installed
-sudo apt-get update
-sudo apt-get -y -q install nodejs-legacy mercurial build-essential python python-dev python-distribute python-pip nginx postgresql-common libpq-dev postgresql-client npm elasticsearch openjdk-7-jre
+# setup supervisord -- you can configure the parameters for gunicorn but the ones that
+# exist are probably somewhat reasonablish.
+fab -H <aws-dns> -u ubuntu -i <key.pem> setup_supervisor
 
-#have elasticsearch only look locally
-echo 'network.bind_host: 127.0.0.1
-script.disable_dynamic: true
-bootstrap.mlockall: true
-path.data: /elastic
-path.logs: /var/log/elasticsearch
-cluster.name: tribesearch
-' | sudo tee -a /etc/elasticsearch/elasticsearch.yml
+# allow the tribe user to have permissions to restart tribe (e.g. the gunicorn process)
+# via supervisor. If you want to configure 
+fab -H <aws-dns> -u ubuntu -i <key.pem> setup_sudo_restart_super
 
-#add the elastic search partition to the fstab
-echo '/dev/xvdf	/elastic	 ext4	defaults,nofail,nobootwait	0 2
-' | sudo tee -a /etc/fstab
-
-
-#elastic search likes this http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#vm-max-map-count
-sudo sysctl -w vm.max_map_count=262144
-#set heap size for elastic http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/setup-configuration.html#_environment_variables
-echo 'ES_HEAP_SIZE=512m' | sudo tee -a /etc/environment
-#make elasticsearch start on boot
-sudo update-rc.d elasticsearch defaults 95 10
-sudo pip install pyelasticsearch
-
-
-#install uwsgi, get config files
-sudo pip install uwsgi
-sudo adduser tribe www-data --disabled-login --system
-hg clone https://cgreene@bitbucket.org/greenelab/tribe-ec2-deploy
-cd /home/tribe
-
-#need to add ssh deploy key for tribe before this
-sudo -u tribe hg clone ssh+hg://hg@bitbucket.org/greenelab/tribe
-
-#need to add ssh deploy key for cgreene/go before this
-sudo pip install -r  /home/tribe/tribe/requirements.txt
-
-#start to get the npm stuff in place
-sudo npm -g install grunt-cli karma bower
-cd /home/tribe/tribe/interface
-sudo -u tribe npm install
-sudo -u tribe bower install
-sudo -u tribe grunt --force
-
-#point to interface/bin
-cd /home/tribe/tribe/
-sudo -u tribe ln -s ../interface/bin static
-
-
-cd ~
-sudo rm /etc/nginx/sites-enabled/default
-sudo ln -s ~/tribe-ec2-deploy/configs/tribe_nginx.conf /etc/nginx/sites-enabled/
-
-#setup uwsgi
-sudo mkdir /var/log/uwsgi
-sudo chown -R www-data:www-data /var/log/uwsgi/
-sudo mkdir /etc/uwsgi
-sudo mkdir /etc/uwsgi/vassals
-sudo ln -s /home/ubuntu/tribe-ec2-deploy/configs/tribe_uwsgi.ini /etc/uwsgi/vassals/
-sudo ln -s /home/ubuntu/tribe-ec2-deploy/configs/uwsgi.conf /etc/init/
-
-#restart required services
-sudo service uwsgi restart
-sudo /etc/init.d/nginx restart
-sudo /etc/init.d/elasticsearch restart
-
-#rebuild search index if needed
-sudo -u tribe /home/tribe/tribe/manage.py rebuild_index 

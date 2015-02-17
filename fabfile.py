@@ -5,7 +5,7 @@ Use these only once to setup an ubuntu server. For day to day usage and
 development you should use the tribe fabfile.
 """
 
-from fabric.api import put, run, sudo, execute
+from fabric.api import put, get, run, sudo, execute
 
 
 def enable_unattended_updates():
@@ -99,21 +99,20 @@ def create_tribe_user():
     """
     sudo('adduser tribe --disabled-password')
     sudo('mkdir /home/tribe/.ssh', user="tribe")
-    put('authorized_keys', '/home/tribe/.ssh/', use_sudo=True, mode=0600)
+    put('authorized_keys', '/home/tribe/.ssh/', use_sudo=True)
     sudo('chown tribe:tribe /home/tribe/.ssh/authorized_keys')
 
 
-def upload_deploy_keys():
+def create_deploy_keys():
     """
-    Move deployment keys to remote server.
+    Create deployment keys.
 
-    Before running this, create a deployment key for this project. Put they key in a file named
-    bb-deploy-tribe_rsa and bb-deploy-tribe_rsa.pub in this folder. Also, put these keys into
-    bitbucket as allowed deployment keys.
+    This command will create deployment keys on the remote server and download the
+    public key as deploy_rsa.pub. Add this deployment key to bitbucket to be able
+    to clone the mercurial repository.
     """
-    put('bb-deploy-tribe_rsa', '/home/tribe/.ssh/id_rsa', use_sudo=True, mode=0600)
-    put('bb-deploy-tribe_rsa.pub', '/home/tribe/.ssh/id_rsa.pub', use_sudo=True, mode=0644)
-    sudo('chown tribe:tribe /home/tribe/.ssh/id_rsa*')
+    sudo("ssh-keygen -t rsa", user="tribe")
+    get('/home/tribe/.ssh/id_rsa.pub', 'deploy_rsa.pub')
 
 
 def clone_tribe_repo():
@@ -168,10 +167,7 @@ def setup_sudo_restart_super():
     Create a supervisor group, add tribe to it, upload a sudo configuration that allows
     the tribe user to perform the restart procedure for the tribe server.
     """
-    sudo('groupadd -f supervisor')
-    sudo('usermod -a -G supervisor tribe')
     put('files/supervisord/super_sudo', '/etc/sudoers.d/super_sudo', use_sudo=True, mode=0440)
-    put('files/supervisord/supervisord.conf', '/etc/supervisor/supervisord.conf', use_sudo=True, mode=0644)
     sudo('chown root:root /etc/sudoers.d/super_sudo')
     sudo('sudo /etc/init.d/supervisor restart')
 
