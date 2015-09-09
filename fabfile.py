@@ -172,11 +172,12 @@ def setup_sudo_restart_super():
     sudo('sudo /etc/init.d/supervisor restart')
 
 
-def setup_yuglify():
+def setup_js():
     """
-    Install yuglify.
+    Install javascript packages.
 
-    Install a minification package. Here yuglfiy, that can be used to combine and shrink javascript
-    source.
+    Install packages used by ngBoilerplate. Tribe uses this as the base for the
+    interface components/angular app.
     """
-    sudo('npm -g install yuglify')
+    sudo('sudo apt-get -y -q install git')  # Git is required for some of the bower packages
+    sudo('sudo npm -g install grunt-cli karma bower')
