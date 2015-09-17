@@ -32,3 +32,6 @@ fab -H <aws-dns> -u ubuntu -i <key.pem> setup_supervisor
 # via supervisor. If you want to configure 
 fab -H <aws-dns> -u ubuntu -i <key.pem> setup_sudo_restart_super
 
+# Setup requirements for ngBoilerplate build
+fab -H <aws-dns> -u ubuntu -i <key.pem> setup_js
+
