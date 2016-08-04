@@ -5,6 +5,10 @@ Use these only once to setup an ubuntu server. For day to day usage and
 development you should use the tribe fabfile.
 """
 
+import random
+import string
+from ConfigParser import SafeConfigParser
+
 from fabric.api import put, get, run, sudo, execute
 
 
@@ -52,6 +56,25 @@ def _install_postgres():
     sudo('apt-get -y -q install postgresql-common libpq-dev postgresql-client ')
 
 
+def _install_rabbitmq():
+    """
+    Function to install RabbitMQ.
+
+    The first 3 commands add the location of the RabbitMQ repository to
+    the /etc/apt/sources.list.d/ directory and update apt-get. The last
+    command actually does the system-wide install of rabbitmq-server.
+
+    """
+    put('files/sources.list.d/rabbitmq.list',
+        '/etc/apt/sources.list.d/rabbitmq.list', use_sudo=True)
+
+    run('wget -O- https://www.rabbitmq.com/rabbitmq-release-signing-key.asc |'
+        'sudo apt-key add -')
+
+    sudo('apt-get update')
+    sudo('apt-get -y -q install rabbitmq-server')
+
+
 def install_system_packages():
     """
     Install all packages required for Tribe.
@@ -63,6 +86,7 @@ def install_system_packages():
     execute(_install_elasticsearch)
     execute(_install_python_deps)
     execute(_install_postgres)
+    execute(_install_rabbitmq)
     sudo('apt-get -y -q install nodejs-legacy build-essential nginx npm supervisor')
 
 
@@ -149,6 +173,42 @@ def setup_virtualenv():
     sudo('virtualenv /home/tribe/.virtualenvs/tribe', user='tribe')
 
 
+def setup_rabbitmq():
+    # This whole next block of code is to either get or set
+    # the tribe user password rabbitmq
+    secrets_file = SafeConfigParser()
+
+    # This 'secrets.ini' file is not added to the
+    # version-controlled files. If this file does not exist,
+    # it will be created by this next block of code.
+    secrets_file.read('secrets.ini')
+
+    random_pw = None
+    if (secrets_file.has_section('rabbitmq') and
+            secrets_file.has_option('rabbitmq', 'TRIBE_PW')):
+        random_pw = secrets_file.get('rabbitmq', 'TRIBE_PW')
+    else:
+        alphanum = string.uppercase + string.lowercase + string.digits
+        random_pw = ''.join(random.sample(alphanum, 20))
+
+        if not secrets_file.has_section('rabbitmq'):
+            secrets_file.add_section('rabbitmq')
+
+        secrets_file.set('rabbitmq', 'TRIBE_PW', random_pw)
+        secrets_fh = open('secrets.ini', 'w')
+        secrets_file.write(secrets_fh)
+        secrets_fh.close()
+
+    # Make the rabbitmq user with pw from above
+    sudo('rabbitmqctl add_user tribe ' + random_pw)
+
+    # Make the vhost for tribe
+    sudo('rabbitmqctl add_vhost tribe')
+
+    # Give the tribe user access to the tribe vhost
+    sudo('rabbitmqctl set_permissions -p tribe tribe ".*" ".*" ".*"')
+
+
 def setup_supervisor():
     """
     Setup supervisor.
@@ -158,6 +218,18 @@ def setup_supervisor():
     """
     put('files/supervisord/tribe_super.conf', '/etc/supervisor/conf.d/tribe_super.conf', use_sudo=True)
     sudo('sudo /etc/init.d/supervisor restart')
+
+
+def setup_celery():
+    """
+    Setup the Tribe Celery daemon through supervisor. This way,
+    supervisor will always make sure it is running, even when
+    the server is restarted.
+    """
+    put('files/supervisord/tribe-celery.conf',
+        '/etc/supervisor/conf.d/tribe-celery.conf', use_sudo=True)
+    sudo('supervisorctl reread')
+    sudo('/etc/init.d/supervisor restart')
 
 
 def setup_sudo_restart_super():
