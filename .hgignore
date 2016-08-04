@@ -2,3 +2,4 @@
 authorized_keys
 deploy_rsa.pub
 .pyc$
+^secrets.ini$
