@@ -173,7 +173,7 @@ def setup_virtualenv():
     sudo('virtualenv /home/tribe/.virtualenvs/tribe', user='tribe')
 
 
-def setup_rabbitmq():
+def setup_tribe_user_in_rabbitmq():
     # This whole next block of code is to either get or set
     # the tribe user password rabbitmq
     secrets_file = SafeConfigParser()
@@ -220,7 +220,7 @@ def setup_supervisor():
     sudo('sudo /etc/init.d/supervisor restart')
 
 
-def setup_celery():
+def setup_tribe_celery():
     """
     Setup the Tribe Celery daemon through supervisor. This way,
     supervisor will always make sure it is running, even when
