@@ -1,1 +1,2 @@
 tribe ALL = (root) NOPASSWD:/usr/bin/supervisorctl restart tribe
+tribe ALL = (root) NOPASSWD:/usr/bin/supervisorctl restart tribe-celery
