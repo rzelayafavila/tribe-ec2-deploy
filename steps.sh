@@ -28,6 +28,14 @@ fab -H <aws-dns> -u ubuntu -i <key.pem> setup_virtualenv
 # exist are probably somewhat reasonablish.
 fab -H <aws-dns> -u ubuntu -i <key.pem> setup_supervisor
 
+# Run the commands to setup the tribe user and password in rabbitmq.
+# This will save the resulting password in a secrets.ini file.
+fab -H <aws-dns> -u ubuntu -i <key.pem> setup_tribe_user_in_rabbitmq
+
+# Place tribe-celery.conf file in /etc/supervisor/conf.d folder and
+# restart supervisor
+fab -H <aws-dns> -u ubuntu -i <key.pem> setup_tribe_celery
+
 # allow the tribe user to have permissions to restart tribe (e.g. the gunicorn process)
 # via supervisor. If you want to configure 
 fab -H <aws-dns> -u ubuntu -i <key.pem> setup_sudo_restart_super
