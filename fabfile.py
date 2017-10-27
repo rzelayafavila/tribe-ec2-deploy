@@ -41,10 +41,11 @@ def _install_python_deps():
     """
     Install python and the packages required for development.
 
-    Install mercurial, pip, distribute, and packages needed to build python
-    libraries by pip.
+    Install git, mercurial, pip, distribute, and packages needed to build
+    python libraries by pip.
     """
-    sudo('apt-get -y -q install python python-dev mercurial python-distribute python-pip python-virtualenv')
+    sudo('apt-get -y -q install python python-dev git mercurial '
+         'python-distribute python-pip python-virtualenv')
 
 
 def _install_postgres():
@@ -131,9 +132,9 @@ def create_deploy_keys():
     """
     Create deployment keys.
 
-    This command will create deployment keys on the remote server and download the
-    public key as deploy_rsa.pub. Add this deployment key to bitbucket to be able
-    to clone the mercurial repository.
+    This command will create deployment keys on the remote server and download
+    the public key as deploy_rsa.pub. Add this deployment key to github to
+    be able to clone the git repository.
     """
     sudo("ssh-keygen -t rsa", user="tribe")
     get('/home/tribe/.ssh/id_rsa.pub', 'deploy_rsa.pub')
@@ -143,10 +144,12 @@ def clone_tribe_repo():
     """
     Clone the Tribe repository.
 
-    This command clones the tribe repository from bitbucket into /home/tribe/tribe. This will be
-    the location where the python code for the server is stored.
+    This command clones the tribe repository from github into
+    /home/tribe/tribe. This will be the location where the python code for
+    the server is stored.
     """
-    sudo('hg clone ssh://hg@bitbucket.org/greenelab/tribe /home/tribe/tribe', user="tribe")
+    sudo('git clone git@github.com:greenelab/tribe.git /home/tribe/tribe',
+         user="tribe")
 
 
 def setup_nginx():
@@ -251,5 +254,4 @@ def setup_js():
     Install packages used by ngBoilerplate. Tribe uses this as the base for the
     interface components/angular app.
     """
-    sudo('sudo apt-get -y -q install git')  # Git is required for some of the bower packages
     sudo('sudo npm -g install grunt-cli karma bower')
