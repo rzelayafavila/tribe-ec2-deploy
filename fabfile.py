@@ -3,13 +3,16 @@ Fab tasks to provision a Tribe server.
 
 Use these only once to setup an ubuntu server. For day to day usage and
 development you should use the tribe fabfile.
+
+*Note: This deployment method does not require deployment keys, since the Tribe
+repository is cloned using 'https', and the repository is public on GitHub.
 """
 
 import random
 import string
 from ConfigParser import SafeConfigParser
 
-from fabric.api import put, get, run, sudo, execute
+from fabric.api import put, run, sudo, execute
 
 
 def enable_unattended_updates():
@@ -41,10 +44,11 @@ def _install_python_deps():
     """
     Install python and the packages required for development.
 
-    Install git, mercurial, pip, distribute, and packages needed to build
-    python libraries by pip.
+    Install git, pip, distribute, and packages needed to build python
+    libraries by pip.
     """
-    sudo('apt-get -y -q install python python-dev git mercurial '
+    sudo('apt-get update')
+    sudo('apt-get -y -q install python python-dev git '
          'python-distribute python-pip python-virtualenv')
 
 
@@ -128,18 +132,6 @@ def create_tribe_user():
     sudo('chown tribe:tribe /home/tribe/.ssh/authorized_keys')
 
 
-def create_deploy_keys():
-    """
-    Create deployment keys.
-
-    This command will create deployment keys on the remote server and download
-    the public key as deploy_rsa.pub. Add this deployment key to github to
-    be able to clone the git repository.
-    """
-    sudo("ssh-keygen -t rsa", user="tribe")
-    get('/home/tribe/.ssh/id_rsa.pub', 'deploy_rsa.pub')
-
-
 def clone_tribe_repo():
     """
     Clone the Tribe repository.
@@ -148,7 +140,7 @@ def clone_tribe_repo():
     /home/tribe/tribe. This will be the location where the python code for
     the server is stored.
     """
-    sudo('git clone git@github.com:greenelab/tribe.git /home/tribe/tribe',
+    sudo('git clone https://github.com/greenelab/tribe.git /home/tribe/tribe',
          user="tribe")
 
 
